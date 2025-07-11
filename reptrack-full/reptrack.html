@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content=device-width, initial-scale=1.0" />
+  <title>RepTrack</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f4f8; padding: 20px; }
+    h1, h2 { color: #2563eb; }
+    .hidden { display: none; }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    input, select {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      margin: 5px;
+    }
+    .workout-box {
+      background: #fff;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <div id="login">
+    <h1>RepTrack</h1>
+    <p>Sign in with Google to start</p>
+    <button onclick="login()">Sign in with Google</button>
+  </div>
+
+  <div id="setup" class="hidden">
+    <h2>Let's get your info</h2>
+    <label>Weight (lbs): <input id="weight" type="number" /></label><br>
+    <label>Goal: 
+      <select id="goal">
+        <option value="lose fat">Lose Fat</option>
+        <option value="build muscle">Build Muscle</option>
+        <option value="get stronger">Get Stronger</option>
+      </select>
+    </label><br>
+    <button onclick="submitUserInfo()">Save and Generate Plan</button>
+  </div>
+
+  <div id="main" class="hidden">
+    <h2>Welcome, <span id="username"></span></h2>
+    <button onclick="logout()">Logout</button>
+    <div id="schedule"></div>
+    <h3>Today's Workout</h3>
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+    <button onclick="generateWorkout()">Generate Workout</button>
+    <div id="workout"></div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    let currentUser;
+
+    function login() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(alert);
+    }
+
+    function logout() {
+      auth.signOut();
+    }
+
+    function submitUserInfo() {
+      const weight = document.getElementById("weight").value;
+      const goal = document.getElementById("goal").value;
+      localStorage.setItem("userWeight", weight);
+      localStorage.setItem("userGoal", goal);
+      document.getElementById("setup").classList.add("hidden");
+      document.getElementById("main").classList.remove("hidden");
+      generateAIPlan(weight, goal);
+    }
+
+    function generateAIPlan(weight, goal) {
+      const plan = `Based on your weight (${weight} lbs) and goal (${goal}), your weekly plan:
+
+- Mon: Full Body
+- Wed: Cardio + Core
+- Fri: Strength Training`;
+      document.getElementById("schedule").innerText = plan;
+    }
+
+    function generateWorkout() {
+      const difficulty = document.getElementById("difficulty").value;
+      const exercises = {
+        easy: ["Bodyweight Squats (3x10)", "Dumbbell Press (3x8)", "Plank (3x30s)"],
+        medium: ["Smith Machine Squats (3x8, 65 lbs)", "Lat Pulldown (3x10, 50 lbs)", "Leg Press (3x10, 90 lbs)"],
+        hard: ["Deadlift (3x5, 95 lbs)", "Overhead Press (3x8, 40 lbs)", "Incline Dumbbell Press (3x8, 35 lbs)"]
+      };
+      const output = exercises[difficulty].map(e => `<div class="workout-box">${e}</div>`).join('');
+      document.getElementById("workout").innerHTML = output;
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        document.getElementById("login").classList.add("hidden");
+        document.getElementById("username").textContent = user.displayName;
+
+        const savedWeight = localStorage.getItem("userWeight");
+        const savedGoal = localStorage.getItem("userGoal");
+
+        if (savedWeight && savedGoal) {
+          document.getElementById("main").classList.remove("hidden");
+          generateAIPlan(savedWeight, savedGoal);
+        } else {
+          document.getElementById("setup").classList.remove("hidden");
+        }
+      } else {
+        currentUser = null;
+        document.getElementById("login").classList.remove("hidden");
+        document.getElementById("setup").classList.add("hidden");
+        document.getElementById("main").classList.add("hidden");
+      }
+    });
+  </script>
+</body>
+</html>
