@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RepTrack</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -36,10 +36,12 @@
   </style>
 </head>
 <body>
-  <div id="login">
-    <h1>RepTrack</h1>
-    <p>Sign in with Google to start</p>
-    <button onclick="login()">Sign in with Google</button>
+  <div id="auth">
+    <h1>RepTrack Login</h1>
+    <input id="email" type="email" placeholder="Email" /><br />
+    <input id="password" type="password" placeholder="Password" /><br />
+    <button onclick="signUp()">Sign Up</button>
+    <button onclick="login()">Log In</button>
   </div>
 
   <div id="setup" class="hidden">
@@ -56,7 +58,7 @@
   </div>
 
   <div id="main" class="hidden">
-    <h2>Welcome, <span id="username"></span></h2>
+    <h2>Welcome!</h2>
     <button onclick="logout()">Logout</button>
     <div id="schedule"></div>
     <h3>Today's Workout</h3>
@@ -71,22 +73,30 @@
 
   <script>
     const firebaseConfig = {
-  apiKey: "AIzaSyBt6rFkDjCIMxeIIwv63ssd2oo8AVESq6M",
-  authDomain: "reptrack-fe9cf.firebaseapp.com",
-  projectId: "reptrack-fe9cf",
-  storageBucket: "reptrack-fe9cf.firebasestorage.app",
-  messagingSenderId: "665446100822",
-  appId: "1:665446100822:web:e9a222076e426dc1bdf0f7",
-  measurementId: "G-RJRYFSY6Z6"
-};
+      apiKey: "AIzaSyBt6rFkDjCIMxeIIwv63ssd2oo8AVESq6M",
+      authDomain: "reptrack-fe9cf.firebaseapp.com",
+      projectId: "reptrack-fe9cf",
+      storageBucket: "reptrack-fe9cf.firebasestorage.app",
+      messagingSenderId: "665446100822",
+      appId: "1:665446100822:web:e9a222076e426dc1bdf0f7",
+      measurementId: "G-RJRYFSY6Z6"
+    };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    let currentUser;
+    function signUp() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => alert("Signed up successfully!"))
+        .catch(error => alert(error.message));
+    }
 
     function login() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).catch(alert);
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      auth.signInWithEmailAndPassword(email, password)
+        .catch(error => alert(error.message));
     }
 
     function logout() {
@@ -104,11 +114,7 @@
     }
 
     function generateAIPlan(weight, goal) {
-      const plan = `Based on your weight (${weight} lbs) and goal (${goal}), your weekly plan:
-
-- Mon: Full Body
-- Wed: Cardio + Core
-- Fri: Strength Training`;
+      const plan = `Based on your weight (${weight} lbs) and goal (${goal}), your weekly plan:\n\n- Mon: Full Body\n- Wed: Cardio + Core\n- Fri: Strength Training`;
       document.getElementById("schedule").innerText = plan;
     }
 
@@ -125,10 +131,7 @@
 
     auth.onAuthStateChanged(user => {
       if (user) {
-        currentUser = user;
-        document.getElementById("login").classList.add("hidden");
-        document.getElementById("username").textContent = user.displayName;
-
+        document.getElementById("auth").classList.add("hidden");
         const savedWeight = localStorage.getItem("userWeight");
         const savedGoal = localStorage.getItem("userGoal");
 
@@ -139,8 +142,7 @@
           document.getElementById("setup").classList.remove("hidden");
         }
       } else {
-        currentUser = null;
-        document.getElementById("login").classList.remove("hidden");
+        document.getElementById("auth").classList.remove("hidden");
         document.getElementById("setup").classList.add("hidden");
         document.getElementById("main").classList.add("hidden");
       }
