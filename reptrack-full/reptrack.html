@@ -4,39 +4,85 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RepTrack</title>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; background: #f0f4f8; padding: 20px; }
-    h1, h2 { color: #2563eb; }
+    :root {
+      --bg: #0d0d0d;
+      --fg: #f5f5f5;
+      --accent: #ff2c2c;
+    }
+
+    body {
+      font-family: 'Orbitron', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      padding: 20px;
+      transition: background 0.4s ease, color 0.4s ease;
+    }
+
+    h1, h2 { color: var(--accent); text-transform: uppercase; }
+
     .hidden { display: none; }
+
     button {
-      background: #2563eb;
+      background: var(--accent);
       color: white;
       border: none;
-      padding: 10px 20px;
+      padding: 12px 24px;
       font-size: 1rem;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
       margin: 10px;
+      transition: transform 0.2s ease;
     }
+
+    button:hover { transform: scale(1.05); }
+
     input, select {
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      margin: 5px;
-    }
-    .workout-box {
-      background: #fff;
       padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      margin: 5px;
+      background: #222;
+      color: white;
+    }
+
+    .workout-box {
+      background: #1c1c1c;
+      padding: 15px;
       margin: 10px 0;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(255, 44, 44, 0.3);
+    }
+
+    .fade {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .equipment-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .equipment-selector label {
+      background: #222;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .equipment-selector input[type="checkbox"] {
+      margin-right: 5px;
     }
   </style>
 </head>
 <body>
-  <div id="auth">
+  <div id="auth" class="fade">
     <h1>RepTrack Login</h1>
     <input id="email" type="email" placeholder="Email" /><br />
     <input id="password" type="password" placeholder="Password" /><br />
@@ -44,20 +90,32 @@
     <button onclick="login()">Log In</button>
   </div>
 
-  <div id="setup" class="hidden">
-    <h2>Let's get your info</h2>
+  <div id="setup" class="hidden fade">
+    <h2>Let’s Get Your Info</h2>
     <label>Weight (lbs): <input id="weight" type="number" /></label><br>
-    <label>Goal: 
+    <label>Height (in): <input id="height" type="number" /></label><br>
+    <label>Goal:
       <select id="goal">
         <option value="lose fat">Lose Fat</option>
         <option value="build muscle">Build Muscle</option>
         <option value="get stronger">Get Stronger</option>
       </select>
     </label><br>
+    <h3>Available Equipment</h3>
+    <div class="equipment-selector">
+      <label><input type="checkbox" value="dumbbells">Dumbbells</label>
+      <label><input type="checkbox" value="barbell">Barbell</label>
+      <label><input type="checkbox" value="smith machine">Smith Machine</label>
+      <label><input type="checkbox" value="leg press">Leg Press</label>
+      <label><input type="checkbox" value="lat pulldown">Lat Pulldown</label>
+      <label><input type="checkbox" value="pull-up bar">Pull-up Bar</label>
+      <label><input type="checkbox" value="cable machine">Cable Machine</label>
+      <label><input type="checkbox" value="treadmill">Treadmill</label>
+    </div>
     <button onclick="submitUserInfo()">Save and Generate Plan</button>
   </div>
 
-  <div id="main" class="hidden">
+  <div id="main" class="hidden fade">
     <h2>Welcome!</h2>
     <button onclick="logout()">Logout</button>
     <div id="schedule"></div>
@@ -72,81 +130,92 @@
   </div>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBt6rFkDjCIMxeIIwv63ssd2oo8AVESq6M",
-      authDomain: "reptrack-fe9cf.firebaseapp.com",
-      projectId: "reptrack-fe9cf",
-      storageBucket: "reptrack-fe9cf.firebasestorage.app",
-      messagingSenderId: "665446100822",
-      appId: "1:665446100822:web:e9a222076e426dc1bdf0f7",
-      measurementId: "G-RJRYFSY6Z6"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+    const users = JSON.parse(localStorage.getItem('reptrackUsers') || '{}');
+    let currentUser = null;
 
     function signUp() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-      auth.createUserWithEmailAndPassword(email, password)
-        .then(() => alert("Signed up successfully!"))
-        .catch(error => alert(error.message));
+      if (users[email]) {
+        alert("User already exists!");
+        return;
+      }
+      users[email] = { password };
+      localStorage.setItem('reptrackUsers', JSON.stringify(users));
+      alert("Signed up successfully!");
+      login();
     }
 
     function login() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-      auth.signInWithEmailAndPassword(email, password)
-        .catch(error => alert(error.message));
+      if (users[email] && users[email].password === password) {
+        currentUser = email;
+        document.getElementById("auth").classList.add("hidden");
+        const savedWeight = localStorage.getItem(`${currentUser}-weight`);
+        const savedGoal = localStorage.getItem(`${currentUser}-goal`);
+        const savedHeight = localStorage.getItem(`${currentUser}-height`);
+
+        if (savedWeight && savedGoal && savedHeight) {
+          document.getElementById("main").classList.remove("hidden");
+          generateAIPlan(savedWeight, savedGoal, savedHeight);
+        } else {
+          document.getElementById("setup").classList.remove("hidden");
+        }
+      } else {
+        alert("Invalid login");
+      }
     }
 
     function logout() {
-      auth.signOut();
+      currentUser = null;
+      document.getElementById("auth").classList.remove("hidden");
+      document.getElementById("setup").classList.add("hidden");
+      document.getElementById("main").classList.add("hidden");
     }
 
     function submitUserInfo() {
       const weight = document.getElementById("weight").value;
+      const height = document.getElementById("height").value;
       const goal = document.getElementById("goal").value;
-      localStorage.setItem("userWeight", weight);
-      localStorage.setItem("userGoal", goal);
+
+      const selectedEquipment = [...document.querySelectorAll('.equipment-selector input:checked')].map(el => el.value);
+
+      localStorage.setItem(`${currentUser}-weight`, weight);
+      localStorage.setItem(`${currentUser}-height`, height);
+      localStorage.setItem(`${currentUser}-goal`, goal);
+      localStorage.setItem(`${currentUser}-equipment`, JSON.stringify(selectedEquipment));
+
       document.getElementById("setup").classList.add("hidden");
       document.getElementById("main").classList.remove("hidden");
-      generateAIPlan(weight, goal);
+      generateAIPlan(weight, goal, height);
     }
 
-    function generateAIPlan(weight, goal) {
-      const plan = `Based on your weight (${weight} lbs) and goal (${goal}), your weekly plan:\n\n- Mon: Full Body\n- Wed: Cardio + Core\n- Fri: Strength Training`;
+    function generateAIPlan(weight, goal, height) {
+      const heightMeters = height / 39.37;
+      const weightKg = weight / 2.205;
+      const bmi = (weightKg / (heightMeters * heightMeters)).toFixed(1);
+
+      const plan = `Based on your weight (${weight} lbs), height (${height} in), BMI: ${bmi}, and goal (${goal}), your weekly plan:\n\n- Mon: Full Body + Cardio\n- Wed: Upper Body + Core\n- Fri: Strength Training (Heavy)`;
       document.getElementById("schedule").innerText = plan;
     }
 
     function generateWorkout() {
       const difficulty = document.getElementById("difficulty").value;
-      const exercises = {
-        easy: ["Bodyweight Squats (3x10)", "Dumbbell Press (3x8)", "Plank (3x30s)"],
-        medium: ["Smith Machine Squats (3x8, 65 lbs)", "Lat Pulldown (3x10, 50 lbs)", "Leg Press (3x10, 90 lbs)"],
-        hard: ["Deadlift (3x5, 95 lbs)", "Overhead Press (3x8, 40 lbs)", "Incline Dumbbell Press (3x8, 35 lbs)"]
+      const equipment = JSON.parse(localStorage.getItem(`${currentUser}-equipment`) || '[]');
+      const workouts = {
+        dumbbells: ["💪 Dumbbell Shoulder Press (3x10)", "💪 Dumbbell Rows (3x8)", "💪 Dumbbell Curls (3x12)"],
+        "lat pulldown": ["🔽 Lat Pulldown (3x10)", "🔽 Straight Arm Pulldown (3x12)", "🔽 Lat Cable Row (3x8)"],
+        "leg press": ["🦵 Leg Press (3x10)", "🦵 Calf Raise on Press (3x12)"],
+        "smith machine": ["🏋️ Smith Machine Squats (3x8)", "🏋️ Smith Machine Bench (3x10)", "🏋️ Smith Machine Lunges (3x8 each)"]
       };
-      const output = exercises[difficulty].map(e => `<div class="workout-box">${e}</div>`).join('');
-      document.getElementById("workout").innerHTML = output;
+      let result = [];
+      equipment.forEach(eq => {
+        if (workouts[eq]) result = result.concat(workouts[eq]);
+      });
+      if (result.length === 0) result = ["⚠️ No equipment selected. Try adding some from setup page."];
+      document.getElementById("workout").innerHTML = result.map(e => `<div class="workout-box fade">${e}</div>`).join('');
     }
-
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        document.getElementById("auth").classList.add("hidden");
-        const savedWeight = localStorage.getItem("userWeight");
-        const savedGoal = localStorage.getItem("userGoal");
-
-        if (savedWeight && savedGoal) {
-          document.getElementById("main").classList.remove("hidden");
-          generateAIPlan(savedWeight, savedGoal);
-        } else {
-          document.getElementById("setup").classList.remove("hidden");
-        }
-      } else {
-        document.getElementById("auth").classList.remove("hidden");
-        document.getElementById("setup").classList.add("hidden");
-        document.getElementById("main").classList.add("hidden");
-      }
-    });
   </script>
 </body>
 </html>
